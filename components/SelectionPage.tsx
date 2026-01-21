@@ -101,7 +101,7 @@ const SelectionPage: React.FC<SelectionPageProps> = ({
       if (select) {
         categoryIds.forEach(id => newSet.add(id));
       } else {
-        categoryIds.forEach(id => newSet.delete(id));
+        categoryIds.forEach(id => newSet.delete(id);
       }
       return newSet;
     });

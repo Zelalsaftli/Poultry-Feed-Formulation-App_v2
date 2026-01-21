@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Ingredient, FeedAnalysisResult, GrowthPhase, InclusionMode, RecommendationOverrides, PerformanceAnalysisReport } from './types';
 import { Page } from './types';
@@ -112,7 +113,7 @@ const App: React.FC = () => {
     setTimeout(() => {
       setCurrentPage(page);
       setAnimationClass('fade-in');
-    }, 300);
+    }, 200);
   }, []);
 
   const handleGoHome = useCallback(() => {
@@ -140,7 +141,19 @@ const App: React.FC = () => {
   }, []);
 
   const handleUpdateMasterIngredient = useCallback((updatedIngredient: Ingredient) => {
-    setMasterIngredients(prev => prev.map(ing => ing.id === updatedIngredient.id ? updatedIngredient : ing));
+    // Update the master list
+    setMasterIngredients(prev => prev.map(ing => (ing.id === updatedIngredient.id ? updatedIngredient : ing)));
+
+    // Also update the recipe if the ingredient is part of it
+    setIngredients(prev =>
+      prev.map(ing => {
+        if (ing.id === updatedIngredient.id) {
+          // Keep the existing inclusion percent from the recipe, but update all other data
+          return { ...updatedIngredient, Inclusion_pct: ing.Inclusion_pct };
+        }
+        return ing;
+      })
+    );
   }, []);
 
   const handleResetMasterIngredients = useCallback(() => {
@@ -150,14 +163,14 @@ const App: React.FC = () => {
   const handleMergeMasterIngredients = useCallback((newIngredients: Ingredient[]) => {
     setMasterIngredients(prev => {
         const existingMap = new Map(prev.map(i => [i.Name.toLowerCase(), i]));
-        // FIX: Removed explicit type annotation on `newIng` to allow TypeScript to correctly infer its type from the `newIngredients` array, resolving the spread operator error.
-        newIngredients.forEach(newIng => {
+        // FIX: Explicitly type `newIng` to resolve type inference issues with the spread operator.
+        newIngredients.forEach((newIng: Ingredient) => {
             const existing = existingMap.get(newIng.Name.toLowerCase());
             if (existing) {
                 const updatedIngredient = { ...existing, ...newIng, id: existing.id }; // Preserve original ID
                 existingMap.set(newIng.Name.toLowerCase(), updatedIngredient);
             } else {
-                const newIngredient = { ...newIng, id: Date.now() + Math.random() };
+                const newIngredient = { ...initialIngredients[0], ...newIng, id: Date.now() + Math.random() };
                 existingMap.set(newIng.Name.toLowerCase(), newIngredient);
             }
         });
@@ -261,6 +274,45 @@ const App: React.FC = () => {
 
 
   const renderPage = () => {
+    // Group analysis-related pages under a single component for better state management
+    const analysisPages = [Page.ANALYSIS, Page.VITAMIN_PREMIX, Page.MINERAL_PREMIX, Page.PERFORMANCE_ANALYSIS];
+    
+    if (analysisPages.includes(currentPage)) {
+        let content;
+        switch (currentPage) {
+            case Page.ANALYSIS:
+                content = <AnalysisPage 
+                    results={analysisResult} 
+                    growthPhase={growthPhase}
+                    setGrowthPhase={setGrowthPhase}
+                    recommendationOverrides={recommendationOverrides}
+                    onUpdateOverride={handleUpdateOverride}
+                    onResetAllOverrides={handleResetAllOverrides}
+                    nutrientVisibility={nutrientVisibility}
+                    onUpdateNutrientVisibility={handleUpdateNutrientVisibility}
+                    nutrientUnits={nutrientUnits}
+                    onUpdateNutrientUnit={handleUpdateNutrientUnit}
+                />;
+                break;
+            case Page.VITAMIN_PREMIX:
+                content = <VitaminPremixPage />;
+                break;
+            case Page.MINERAL_PREMIX:
+                content = <MineralPremixPage />;
+                break;
+            case Page.PERFORMANCE_ANALYSIS:
+                content = <PerformanceAnalysisPage 
+                    analysisResult={analysisResult} 
+                    report={performanceAnalysisReport} 
+                    setReport={setPerformanceAnalysisReport} 
+                />;
+                break;
+            default:
+                content = <p>Page not found</p>;
+        }
+        return content;
+    }
+
     switch (currentPage) {
       case Page.SELECTION:
         return <SelectionPage
@@ -284,29 +336,6 @@ const App: React.FC = () => {
           setInclusionMode={setInclusionMode}
           runActionWithNormalizationCheck={runActionWithNormalizationCheck}
         />;
-      case Page.ANALYSIS:
-        return <AnalysisPage
-          results={analysisResult}
-          growthPhase={growthPhase}
-          setGrowthPhase={setGrowthPhase}
-          recommendationOverrides={recommendationOverrides}
-          onUpdateOverride={handleUpdateOverride}
-          onResetAllOverrides={handleResetAllOverrides}
-          nutrientVisibility={nutrientVisibility}
-          onUpdateNutrientVisibility={handleUpdateNutrientVisibility}
-          nutrientUnits={nutrientUnits}
-          onUpdateNutrientUnit={handleUpdateNutrientUnit}
-        />;
-      case Page.VITAMIN_PREMIX:
-        return <VitaminPremixPage />;
-      case Page.MINERAL_PREMIX:
-        return <MineralPremixPage />;
-      case Page.PERFORMANCE_ANALYSIS:
-        return <PerformanceAnalysisPage
-                  analysisResult={analysisResult} 
-                  report={performanceAnalysisReport}
-                  setReport={setPerformanceAnalysisReport}
-               />;
       case Page.HOW_ANALYSIS_WORKS:
         return <HowAnalysisWorksPage />;
       case Page.INTERPRET_RESULTS:

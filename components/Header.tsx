@@ -32,6 +32,15 @@ const Header: React.FC<HeaderProps> = ({
     setIsHelpOpen(false);
   };
 
+  const navLinks = [
+    { page: Page.SELECTION, label: 'Ingredient Database' },
+    { page: Page.INPUT, label: 'Feed Formulation' },
+    { page: Page.ANALYSIS, label: 'Feed Analysis' },
+    { page: Page.VITAMIN_PREMIX, label: 'Vitamin Premix' },
+    { page: Page.MINERAL_PREMIX, label: 'Mineral Premix' },
+    { page: Page.PERFORMANCE_ANALYSIS, label: 'Performance Analysis' },
+  ];
+
   return (
     <header className="bg-white shadow-md w-full no-print">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -51,42 +60,16 @@ const Header: React.FC<HeaderProps> = ({
           </div>
           <div className="flex items-center gap-6">
             <nav className="hidden md:flex items-center space-x-1">
-              <button
-                onClick={() => onNavigate(Page.SELECTION)}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage === Page.SELECTION ? 'bg-teal-100 text-teal-700' : 'text-gray-500 hover:bg-gray-100'}`}
-              >
-                Ingredient Database
-              </button>
-              <button
-                onClick={() => onNavigate(Page.INPUT)}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage === Page.INPUT ? 'bg-teal-100 text-teal-700' : 'text-gray-500 hover:bg-gray-100'}`}
-              >
-                Feed Formulation
-              </button>
-              <button
-                onClick={() => onNavigate(Page.ANALYSIS)}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage === Page.ANALYSIS ? 'bg-teal-100 text-teal-700' : 'text-gray-500 hover:bg-gray-100'}`}
-              >
-                Feed Analysis
-              </button>
-              <button
-                onClick={() => onNavigate(Page.VITAMIN_PREMIX)}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage === Page.VITAMIN_PREMIX ? 'bg-teal-100 text-teal-700' : 'text-gray-500 hover:bg-gray-100'}`}
-              >
-                Vitamin Premix
-              </button>
-               <button
-                onClick={() => onNavigate(Page.MINERAL_PREMIX)}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage === Page.MINERAL_PREMIX ? 'bg-teal-100 text-teal-700' : 'text-gray-500 hover:bg-gray-100'}`}
-              >
-                Mineral Premix
-              </button>
-              <button
-                onClick={() => onNavigate(Page.PERFORMANCE_ANALYSIS)}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage === Page.PERFORMANCE_ANALYSIS ? 'bg-teal-100 text-teal-700' : 'text-gray-500 hover:bg-gray-100'}`}
-              >
-                Performance Analysis
-              </button>
+              {navLinks.map(link => (
+                  <button
+                    key={link.page}
+                    onClick={() => onNavigate(link.page)}
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${currentPage === link.page ? 'bg-teal-100 text-teal-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                  >
+                    {link.label}
+                  </button>
+              ))}
+              
               {/* Help Dropdown */}
               <div className="relative" ref={helpMenuRef}>
                 <button

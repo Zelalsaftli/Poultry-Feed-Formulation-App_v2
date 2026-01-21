@@ -61,18 +61,16 @@ const IngredientEditModal: React.FC<IngredientEditModalProps> = ({ ingredient, o
       allNutrientFields.forEach(field => {
         const value = parseFloat(formState[field]);
         if (!isNaN(value) && value !== 0) {
-          // FIX: The `as any` cast is unsafe. Direct property assignment is type-safe here because `field` is a valid key and `value` is a number.
-          matrix[field] = value;
+          matrix[field as string] = value;
         }
       });
       
-      const enzymeTemplate: Omit<Ingredient, 'id' | 'Name' | 'description' | 'category' | 'Price_USD_per_ton' | 'Inclusion_pct'> = {
-         CP_pct: 0, ME_kcal_per_kg: 0, Ca_pct: 0, avP_pct: 0, phytateP_pct: 0, Na_pct: 0, K_pct: 0, Cl_pct: 0, Lys_pct: 0, TSAA_pct: 0, Thr_pct: 0, Val_pct: 0, Ile_pct: 0, Leu_pct: 0, Arg_pct: 0, Try_pct: 0, Starch_pct: 0, CF_pct: 0, NDF_pct: 0, ADF_pct: 0, Ash_pct: 0, Choline_mg_per_kg: 0, standard_dosage_g_per_ton: 0, matrix: {}
-      };
-
+      // FIX: Use a template object to ensure all properties of an Ingredient are present,
+      // then override nutrient values to 0, which is correct for enzymes.
       updatedIngredient = {
-        ...enzymeTemplate,
+        ...initialIngredients[0],
         ...baseData,
+        CP_pct: 0, ME_kcal_per_kg: 0, Ca_pct: 0, avP_pct: 0, phytateP_pct: 0, Na_pct: 0, K_pct: 0, Cl_pct: 0, Lys_pct: 0, TSAA_pct: 0, Thr_pct: 0, Val_pct: 0, Ile_pct: 0, Leu_pct: 0, Arg_pct: 0, Try_pct: 0, Starch_pct: 0, CF_pct: 0, NDF_pct: 0, ADF_pct: 0, Ash_pct: 0, Choline_mg_per_kg: 0,
         standard_dosage_g_per_ton: parseFloat(formState.standard_dosage_g_per_ton) || 100,
         matrix: matrix,
       };

@@ -22,7 +22,7 @@ class ErrorBoundary extends Component<Props, State> {
     console.error("Uncaught error:", error, errorInfo);
   }
 
-  // FIX: Using an arrow function ensures `this` is correctly bound to the component instance, allowing access to `this.props` and `this.setState`.
+  // FIX: Converted to an arrow function to automatically bind `this`, resolving errors with accessing `this.props` and `this.setState`.
   public handleReset = (): void => {
     this.props.onReset();
     this.setState({ hasError: false });

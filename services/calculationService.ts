@@ -23,62 +23,76 @@ export const calculateFeedAnalysis = (ingredients: Ingredient[]): FeedAnalysisRe
   if (totalInclusion <= 0) {
     return { ...emptyResult, ingredients: ingredients };
   }
+  
+  const nonEnzymeIngredients = ingredients.filter(ing => ing.category !== 'Enzymes');
+  const enzymeIngredients = ingredients.filter(ing => ing.category === 'Enzymes');
+  
+  const nonEnzymeTotalInclusion = nonEnzymeIngredients.reduce((sum, ing) => sum + ing.Inclusion_pct, 0);
 
   const nutrientKeys = Object.keys(ingredients[0] || {}).filter(
     key => !['id', 'Name', 'Inclusion_pct', 'Price_USD_per_ton', 'category', 'description', 'standard_dosage_g_per_ton', 'matrix'].includes(key)
   );
 
-  const results: Record<string, number> = {};
+  // Step 1: Calculate base nutrient profile from non-enzyme ingredients only
+  const baseResults: Record<string, number> = {};
+  if (nonEnzymeTotalInclusion > 0) {
+    nutrientKeys.forEach(key => {
+      const values = nonEnzymeIngredients.map(ing => ((ing as any)[key] as number) || 0);
+      const inclusions = nonEnzymeIngredients.map(ing => ing.Inclusion_pct);
+      const totalNutrient = sumProduct(inclusions, values);
+      baseResults[key] = totalNutrient / nonEnzymeTotalInclusion; // Weighted average of the base mix
+    });
+  } else {
+    nutrientKeys.forEach(key => baseResults[key] = 0);
+  }
+
+  // Step 2: Calculate total nutrient uplift from all enzymes
+  const enzymeUplifts: Record<string, number> = {};
   const enzymeContributionsForDisplay: FeedAnalysisResult['enzymeContributions'] = {};
 
-  // Create a temporary list of "effective" ingredients where enzyme matrix values,
-  // scaled by dosage, are treated as the enzyme's intrinsic nutrient values.
-  const effectiveIngredients = ingredients.map(ing => {
-    if (ing.category === 'Enzymes' && ing.matrix && ing.standard_dosage_g_per_ton && ing.Inclusion_pct > 0) {
+  enzymeIngredients.forEach(ing => {
+    if (ing.matrix && ing.standard_dosage_g_per_ton && ing.Inclusion_pct > 0) {
+      // Inclusion_pct of 0.015% corresponds to 150 g/ton. 0.015 * 10000 = 150.
       const actual_dosage_g_per_ton = ing.Inclusion_pct * 10000;
       const dosage_ratio = Math.min(1, actual_dosage_g_per_ton / ing.standard_dosage_g_per_ton);
       
-      const effectiveNutrients: Partial<Ingredient> = {};
       const contributions: Record<string, number> = {};
 
       for (const key in ing.matrix) {
         const nutrientKey = key as keyof typeof ing.matrix;
         const releaseValue = ing.matrix[nutrientKey] || 0;
-        
-        // This effective value is used in the weighted average calculation,
-        // treating the enzyme like any other ingredient.
-        const effectiveValue = releaseValue * dosage_ratio;
-        (effectiveNutrients as any)[nutrientKey] = effectiveValue;
+        const uplift = releaseValue * dosage_ratio;
 
-        // For display, calculate the final contribution this enzyme makes to the total mix value.
-        const finalContribution = (ing.Inclusion_pct * effectiveValue) / totalInclusion;
-        if (finalContribution > 1e-6) {
-          contributions[nutrientKey] = finalContribution;
+        if (uplift !== 0) {
+          enzymeUplifts[nutrientKey] = (enzymeUplifts[nutrientKey] || 0) + uplift;
+          contributions[nutrientKey] = uplift;
         }
       }
+
       if (Object.keys(contributions).length > 0) {
         enzymeContributionsForDisplay[ing.id] = { name: ing.Name, contributions };
       }
-      return { ...ing, ...effectiveNutrients };
     }
-    return ing;
   });
 
-  // Perform a single weighted average calculation over all "effective" ingredients.
+  // Step 3: Combine base profile and enzyme uplifts
+  const finalResults: Record<string, number> = {};
+  const nonEnzymeRatio = nonEnzymeTotalInclusion / totalInclusion;
+
   nutrientKeys.forEach(key => {
-    const values = effectiveIngredients.map(ing => ((ing as any)[key] as number) || 0);
-    const inclusions = effectiveIngredients.map(ing => ing.Inclusion_pct);
-    const totalNutrient = sumProduct(inclusions, values);
-    results[key] = totalNutrient / totalInclusion;
+    const baseValue = baseResults[key] || 0;
+    const enzymeUplift = enzymeUplifts[key] || 0;
+    // Scale the base mix nutrients by their proportion and add the direct enzyme uplift
+    finalResults[key] = (baseValue * nonEnzymeRatio) + enzymeUplift;
   });
 
-  // Calculate derived nutrients from the final averaged results.
-  results.MECP_Ratio = results.CP_pct > 0 ? results.ME_kcal_per_kg / results.CP_pct : 0;
-  results.CaAvP_Ratio = results.avP_pct > 0 ? results.Ca_pct / results.avP_pct : 0;
-  results.K_Cl_Na_Ratio = results.Na_pct > 0 ? (results.K_pct + results.Cl_pct) / results.Na_pct : 0;
-  results.dEB = 434.78 * results.Na_pct + 256.4 * results.K_pct - 281.69 * results.Cl_pct;
+  // Calculate derived nutrients from the final results
+  finalResults.MECP_Ratio = finalResults.CP_pct > 0 ? finalResults.ME_kcal_per_kg / finalResults.CP_pct : 0;
+  finalResults.CaAvP_Ratio = finalResults.avP_pct > 0 ? finalResults.Ca_pct / finalResults.avP_pct : 0;
+  finalResults.K_Cl_Na_Ratio = finalResults.Na_pct > 0 ? (finalResults.K_pct + finalResults.Cl_pct) / finalResults.Na_pct : 0;
+  finalResults.dEB = 434.78 * finalResults.Na_pct + 256.4 * finalResults.K_pct - 281.69 * finalResults.Cl_pct;
   
-  // Calculate final cost, ensuring it's accurate for any total inclusion level.
+  // Calculate final cost
   const totalCostValue = ingredients.reduce((acc, ing) => acc + (ing.Inclusion_pct * (ing.Price_USD_per_ton || 0)), 0);
   const totalCostPerTon = totalCostValue / totalInclusion;
 
@@ -86,7 +100,7 @@ export const calculateFeedAnalysis = (ingredients: Ingredient[]): FeedAnalysisRe
     totalInclusion,
     totalCostPerTon,
     totalCostPer100kg: totalCostPerTon / 10,
-    nutrients: results,
+    nutrients: finalResults,
     ingredients: ingredients,
     enzymeContributions: enzymeContributionsForDisplay,
   };
