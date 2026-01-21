@@ -64,6 +64,10 @@ const InputPage: React.FC<InputPageProps> = ({
     }
   };
   
+  const handleReorder = (newIngredients: Ingredient[]) => {
+    setIngredients(newIngredients);
+  };
+
   const totalValue = inclusionMode === 'percent' ? totalInclusion : totalInclusion * 10;
   const target = inclusionMode === 'percent' ? 100 : 1000;
   const unit = inclusionMode === 'percent' ? '%' : ' kg';
@@ -148,6 +152,7 @@ const InputPage: React.FC<InputPageProps> = ({
             onDeleteIngredient={onDeleteIngredient}
             inclusionMode={inclusionMode}
             totalInclusion={totalInclusion}
+            onReorder={handleReorder}
         />
 
       </div>

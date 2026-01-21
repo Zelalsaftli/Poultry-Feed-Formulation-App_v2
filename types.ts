@@ -64,6 +64,7 @@ export enum Page {
   PERFORMANCE_ANALYSIS = 'performance_analysis',
   HOW_ANALYSIS_WORKS = 'how_analysis_works',
   INTERPRET_RESULTS = 'interpret_results',
+  ENZYME_MANAGER = 'enzyme_manager',
 }
 
 export type VitaminUnit = 'IU' | 'mg';

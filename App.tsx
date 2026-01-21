@@ -12,6 +12,7 @@ import MineralPremixPage from './components/MineralPremixPage';
 import PerformanceAnalysisPage from './components/PerformanceAnalysisPage';
 import HowAnalysisWorksPage from './components/HowAnalysisWorksPage';
 import InterpretResultsPage from './components/InterpretResultsPage';
+import EnzymeManagerPage from './components/EnzymeManagerPage';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import InclusionConfirmationModal from './components/InclusionConfirmationModal';
@@ -163,8 +164,8 @@ const App: React.FC = () => {
   const handleMergeMasterIngredients = useCallback((newIngredients: Ingredient[]) => {
     setMasterIngredients(prev => {
         const existingMap = new Map(prev.map(i => [i.Name.toLowerCase(), i]));
-        // FIX: Explicitly type `newIng` to resolve type inference issues with the spread operator.
-        newIngredients.forEach((newIng: Ingredient) => {
+        // FIX: Replaced forEach with a for...of loop to resolve type inference issues.
+        for (const newIng of newIngredients) {
             const existing = existingMap.get(newIng.Name.toLowerCase());
             if (existing) {
                 const updatedIngredient = { ...existing, ...newIng, id: existing.id }; // Preserve original ID
@@ -173,7 +174,7 @@ const App: React.FC = () => {
                 const newIngredient = { ...initialIngredients[0], ...newIng, id: Date.now() + Math.random() };
                 existingMap.set(newIng.Name.toLowerCase(), newIngredient);
             }
-        });
+        }
         return Array.from(existingMap.values());
     });
   }, []);
@@ -335,6 +336,12 @@ const App: React.FC = () => {
           inclusionMode={inclusionMode}
           setInclusionMode={setInclusionMode}
           runActionWithNormalizationCheck={runActionWithNormalizationCheck}
+        />;
+      case Page.ENZYME_MANAGER:
+        return <EnzymeManagerPage
+          masterIngredients={masterIngredients}
+          onAddMasterIngredient={handleAddMasterIngredient}
+          onUpdateMasterIngredient={handleUpdateMasterIngredient}
         />;
       case Page.HOW_ANALYSIS_WORKS:
         return <HowAnalysisWorksPage />;

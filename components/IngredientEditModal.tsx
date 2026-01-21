@@ -65,12 +65,11 @@ const IngredientEditModal: React.FC<IngredientEditModalProps> = ({ ingredient, o
         }
       });
       
-      // FIX: Use a template object to ensure all properties of an Ingredient are present,
-      // then override nutrient values to 0, which is correct for enzymes.
+      // Fix: Correctly construct the enzyme object by spreading baseData last to ensure the 'category' is set to 'Enzymes'.
       updatedIngredient = {
         ...initialIngredients[0],
-        ...baseData,
         CP_pct: 0, ME_kcal_per_kg: 0, Ca_pct: 0, avP_pct: 0, phytateP_pct: 0, Na_pct: 0, K_pct: 0, Cl_pct: 0, Lys_pct: 0, TSAA_pct: 0, Thr_pct: 0, Val_pct: 0, Ile_pct: 0, Leu_pct: 0, Arg_pct: 0, Try_pct: 0, Starch_pct: 0, CF_pct: 0, NDF_pct: 0, ADF_pct: 0, Ash_pct: 0, Choline_mg_per_kg: 0,
+        ...baseData,
         standard_dosage_g_per_ton: parseFloat(formState.standard_dosage_g_per_ton) || 100,
         matrix: matrix,
       };
@@ -78,7 +77,7 @@ const IngredientEditModal: React.FC<IngredientEditModalProps> = ({ ingredient, o
     } else {
       const nutrientData: Partial<Ingredient> = {};
       allNutrientFields.forEach(field => {
-        nutrientData[field] = parseFloat(formState[field]) || 0;
+        (nutrientData as any)[field] = parseFloat(formState[field]) || 0;
       });
       updatedIngredient = {
         ...initialIngredients[0], // Use a template to ensure all fields are present

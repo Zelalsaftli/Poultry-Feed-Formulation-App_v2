@@ -9,6 +9,7 @@ interface IngredientTableProps {
   onDeleteIngredient: (id: number) => void;
   inclusionMode: InclusionMode;
   totalInclusion: number;
+  onReorder: (ingredients: Ingredient[]) => void;
 }
 
 const IngredientRow: React.FC<{
@@ -18,7 +19,17 @@ const IngredientRow: React.FC<{
     onRequestDelete: (ingredient: Ingredient) => void;
     inclusionMode: InclusionMode;
     totalInclusion: number;
-}> = ({ ingredient, index, onUpdateIngredient, onRequestDelete, inclusionMode, totalInclusion }) => {
+    isDragging: boolean;
+    isDragTarget: boolean;
+    onDragStart: (e: React.DragEvent) => void;
+    onDragEnter: (e: React.DragEvent) => void;
+    onDragEnd: (e: React.DragEvent) => void;
+    onDrop: (e: React.DragEvent) => void;
+    onDragOver: (e: React.DragEvent) => void;
+}> = ({ 
+    ingredient, index, onUpdateIngredient, onRequestDelete, inclusionMode, totalInclusion,
+    isDragging, isDragTarget, onDragStart, onDragEnter, onDragEnd, onDrop, onDragOver
+}) => {
     
     const initialDisplayValue = useMemo(() => {
         const value = inclusionMode === 'percent' 
@@ -88,9 +99,24 @@ const IngredientRow: React.FC<{
         onUpdateIngredient(index, 'Inclusion_pct', percentValue);
     };
 
+    const dropTargetClass = isDragTarget ? 'border-t-2 border-teal-500' : '';
+    const draggingClass = isDragging ? 'opacity-50 bg-gray-100' : '';
 
     return (
-        <tr className="hover:bg-gray-50">
+        <tr 
+            draggable="true"
+            onDragStart={onDragStart}
+            onDragEnter={onDragEnter}
+            onDragEnd={onDragEnd}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            className={`hover:bg-gray-50 transition-all duration-150 ${draggingClass} ${dropTargetClass}`}
+        >
+            <td className="px-2 py-4 whitespace-nowrap text-center text-gray-400 cursor-move" title="Drag to reorder">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </td>
             <td
                 className="px-6 py-4 whitespace-nowrap text-left font-medium text-gray-800"
             >
@@ -144,8 +170,10 @@ const IngredientRow: React.FC<{
 };
 
 
-const IngredientTable: React.FC<IngredientTableProps> = ({ ingredients, onUpdateIngredient, onDeleteIngredient, inclusionMode, totalInclusion }) => {
+const IngredientTable: React.FC<IngredientTableProps> = ({ ingredients, onUpdateIngredient, onDeleteIngredient, inclusionMode, totalInclusion, onReorder }) => {
   const [deletionCandidate, setDeletionCandidate] = useState<Ingredient | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const displayedData = useMemo(() => {
     return ingredients.map((ing, index) => ({ ingredient: ing, originalIndex: index }));
@@ -168,12 +196,48 @@ const IngredientTable: React.FC<IngredientTableProps> = ({ ingredients, onUpdate
     setDeletionCandidate(null);
   };
 
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnter = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (index !== draggedIndex) {
+      setDragOverIndex(index);
+    }
+  };
+  
+  const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== dropIndex) {
+      const reordered = [...ingredients];
+      const [item] = reordered.splice(draggedIndex, 1);
+      reordered.splice(dropIndex, 0, item);
+      onReorder(reordered);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+
   return (
     <>
       <div className="overflow-x-auto border border-gray-200 rounded-lg">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th scope="col" className="px-2 py-3 w-12"></th>
               <th
                 scope="col"
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
@@ -201,6 +265,13 @@ const IngredientTable: React.FC<IngredientTableProps> = ({ ingredients, onUpdate
                   onRequestDelete={handleRequestDelete}
                   inclusionMode={inclusionMode}
                   totalInclusion={totalInclusion}
+                  isDragging={draggedIndex === originalIndex}
+                  isDragTarget={dragOverIndex === originalIndex}
+                  onDragStart={(e) => handleDragStart(e, originalIndex)}
+                  onDragEnter={(e) => handleDragEnter(e, originalIndex)}
+                  onDrop={(e) => handleDrop(e, originalIndex)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={handleDragOver}
               />
             ))}
           </tbody>
